@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useApp, Role, User } from "@/app/context/AppContext";
+import { useApp } from "@/app/context/AppContext";
 import { 
   Users, 
   Shield, 
@@ -12,13 +12,9 @@ import {
   Trash2, 
   Copy, 
   Check, 
-  Mail, 
-  Globe, 
   Send,
   Laptop, 
-  Sparkles,
-  Info,
-  ExternalLink
+  Info
 } from "lucide-react";
 import {
   GithubIcon,
@@ -28,8 +24,6 @@ import {
   GoogleDriveIcon,
   LinearIcon
 } from "@/components/BrandIcons";
-import { useRouter } from "next/navigation";
-
 type TabId = "overview" | "users" | "roles" | "access";
 
 export default function AdminConsole() {
@@ -323,7 +317,7 @@ export default function AdminConsole() {
                       ) : (
                         users.slice(0, 5).map((user) => (
                           <tr key={user.email}>
-                            <td className="py-3 font-semibold text-zinc-300 truncate max-w-[180px]">
+                            <td className="py-3 font-semibold text-zinc-300 truncate max-w-45">
                               {user.email}
                             </td>
                             <td className="py-3">{user.role}</td>
@@ -459,10 +453,10 @@ export default function AdminConsole() {
                                 {user.name ? user.name[0].toUpperCase() : user.email[0].toUpperCase()}
                               </div>
                               <div className="min-w-0">
-                                <p className="font-bold text-zinc-200 truncate max-w-[150px]">
+                                <p className="font-bold text-zinc-200 truncate max-w-37.5">
                                   {user.name || "Awaiting Setup"}
                                 </p>
-                                <p className="text-[10px] text-zinc-500 truncate max-w-[150px]">
+                                <p className="text-[10px] text-zinc-500 truncate max-w-37.5">
                                   {user.email}
                                 </p>
                               </div>
@@ -616,7 +610,7 @@ export default function AdminConsole() {
                             </button>
                           )}
                         </div>
-                        <p className="text-xs text-zinc-400 leading-relaxed min-h-[40px]">
+                                <p className="text-xs text-zinc-400 leading-relaxed min-h-10">
                           {role.description}
                         </p>
                       </div>
@@ -680,7 +674,7 @@ export default function AdminConsole() {
                     <tr>
                       <th className="p-6 font-bold text-zinc-400 text-xs w-48">Roles</th>
                       {tools.map((tool) => (
-                        <th key={tool.id} className="p-6 font-bold text-center border-l border-zinc-800/60 min-w-[120px]">
+                        <th key={tool.id} className="p-6 font-bold text-center border-l border-zinc-800/60 min-w-30">
                           <div className="flex flex-col items-center gap-1.5 mx-auto">
                             <div className={`p-1.5 rounded-lg bg-linear-to-br ${tool.color} shrink-0`}>
                               {getToolIcon(tool.iconName)}
@@ -698,7 +692,7 @@ export default function AdminConsole() {
                         {/* Role details */}
                         <td className="p-6">
                           <p className="font-bold text-sm text-zinc-200">{role.name}</p>
-                          <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed max-w-[200px] line-clamp-2">
+                          <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed max-w-50 line-clamp-2">
                             {role.description}
                           </p>
                         </td>
@@ -715,7 +709,7 @@ export default function AdminConsole() {
                                   onChange={(e) => updateAccessMatrix(role.id, tool.id, e.target.checked)}
                                   className="sr-only peer"
                                 />
-                                <div className="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                                <div className="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
                               </label>
                               <div className="mt-1.5">
                                 <span className={`text-[9px] font-bold ${
