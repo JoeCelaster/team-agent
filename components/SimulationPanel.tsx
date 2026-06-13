@@ -5,12 +5,12 @@ import { useApp } from "@/app/context/AppContext";
 import { 
   Mail, 
   Settings, 
-  User, 
   RefreshCw, 
   ChevronDown, 
   ChevronUp, 
   ExternalLink,
-  Info
+  Info,
+  Sparkles
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -28,11 +28,20 @@ export function SimulationPanel() {
       // If it was sent in the last 5 seconds
       const sentTime = new Date(latestEmail.sentAt).getTime();
       if (Date.now() - sentTime < 5000) {
-        setNewEmailNotification(latestEmail.to);
+        let clearTimer: ReturnType<typeof setTimeout> | undefined;
         const timer = setTimeout(() => {
-          setNewEmailNotification(null);
-        }, 8000);
-        return () => clearTimeout(timer);
+          setNewEmailNotification(latestEmail.to);
+          clearTimer = setTimeout(() => {
+            setNewEmailNotification(null);
+          }, 8000);
+        }, 0);
+
+        return () => {
+          clearTimeout(timer);
+          if (clearTimer) {
+            clearTimeout(clearTimer);
+          }
+        };
       }
     }
   }, [emails]);
@@ -136,6 +145,18 @@ export function SimulationPanel() {
                   )}
                 </div>
                 Inbox ({emails.length})
+              </button>
+
+              <button
+                onClick={() => router.push("/ai")}
+                className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-medium transition-all ${
+                  pathname === "/ai"
+                    ? "bg-emerald-600 border-emerald-500 text-white"
+                    : "bg-transparent border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                AI Lab
               </button>
             </div>
 
