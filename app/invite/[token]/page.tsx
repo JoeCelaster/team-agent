@@ -57,7 +57,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
   if (!invitedUser) {
     return (
-      <div className="flex flex-col min-h-screen items-center justify-center bg-zinc-950 p-6 font-sans">
+      <div className="flex flex-col min-h-screen items-center justify-center bg-[var(--canvas)] p-6 font-sans">
         <div className="max-w-md w-full text-center space-y-6 bg-zinc-900 border border-zinc-800 p-8 rounded-3xl shadow-2xl">
           <div className="mx-auto w-16 h-16 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center border border-red-500/20">
             <XCircle className="w-8 h-8" />
@@ -83,9 +83,9 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   const getToolIcon = (iconName: string) => {
     switch (iconName) {
       case "Github": return <GithubIcon className="w-5 h-5 text-zinc-300" />;
-      case "Slack": return <SlackIcon className="w-5 h-5 text-purple-450" />;
+      case "Slack": return <SlackIcon className="w-5 h-5 text-purple-400" />;
       case "BookOpen": return <NotionIcon className="w-5 h-5 text-amber-500" />;
-      case "HardDrive": return <GoogleDriveIcon className="w-5 h-5 text-blue-450" />;
+      case "HardDrive": return <GoogleDriveIcon className="w-5 h-5 text-blue-400" />;
       case "Figma": return <FigmaIcon className="w-5 h-5 text-rose-500" />;
       case "CheckSquare": return <LinearIcon className="w-5 h-5 text-indigo-400" />;
       default: return <Laptop className="w-5 h-5" />;
@@ -129,7 +129,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 font-sans relative overflow-hidden py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex flex-col min-h-screen bg-[var(--canvas)] font-sans relative overflow-hidden py-12 px-4 sm:px-6 lg:px-8">
       {/* Background blobs for premium linear style */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 opacity-10 pointer-events-none">
         <div className="absolute top-[-10%] left-[20%] w-[350px] h-[350px] bg-indigo-500 rounded-full blur-[80px]"></div>

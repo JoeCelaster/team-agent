@@ -1,26 +1,68 @@
 @import "tailwindcss";
 
+/*
+  AuraOnboard design tokens.
+  Dark, committed. Neutrals tinted toward the indigo brand hue (~275) so the
+  surface reads intentional rather than generic zinc. Indigo is the single
+  product accent; emerald / amber / red stay status-only.
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas: oklch(0.165 0.006 275);   /* app background */
+  --surface: oklch(0.205 0.007 275);  /* elevated panels */
+  --foreground: oklch(0.96 0.004 275);
+  --accent: oklch(0.62 0.19 277);      /* indigo-500-ish */
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
+  --color-background: var(--canvas);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--canvas);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ---- Motion ---------------------------------------------------------------
+   State-conveying only. 150-260ms, ease-out, no bounce / elastic.            */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in { animation: fade-in 0.2s var(--ease-out-quart) both; }
+.animate-rise-in { animation: rise-in 0.24s var(--ease-out-quart) both; }
+.animate-toast-in { animation: toast-in 0.26s var(--ease-out-quint) both; }
+.animate-pop-in { animation: pop-in 0.18s var(--ease-out-quart) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

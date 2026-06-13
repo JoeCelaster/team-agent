@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+// `/` is handled by app/page.tsx, which routes by session
+// (admin -> /admin, employee -> /dashboard, signed-out -> /login).
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

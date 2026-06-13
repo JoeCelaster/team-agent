@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/Providers";
-import { SimulationPanel } from "@/components/SimulationPanel";
+import { SimLauncher } from "@/components/SimLauncher";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,10 +29,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100 selection:bg-indigo-500 selection:text-white">
+      <body className="min-h-full flex flex-col bg-[var(--canvas)] text-zinc-100 selection:bg-indigo-500 selection:text-white">
         <Providers>
           {children}
-          <SimulationPanel />
+          <SimLauncher />
         </Providers>
       </body>
     </html>

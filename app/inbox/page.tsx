@@ -25,15 +25,15 @@ export default function InboxPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 font-sans">
+    <div className="flex flex-col min-h-screen bg-[var(--canvas)] font-sans">
       {/* Header */}
-      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-md px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-zinc-800/80 bg-[var(--canvas)]/85 backdrop-blur-md px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
             <Mail className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-zinc-100">Simulated Email Client</h1>
+            <h1 className="text-lg font-semibold text-zinc-100">Simulated email client</h1>
             <p className="text-xs text-zinc-500">Test the onboarding emails sent by the Admin Panel</p>
           </div>
         </div>
