@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSortedProviderCandidates } from "@/lib/ai/provider-pool";
+import { getSortedProviderCandidates, markProviderFailure, markProviderSuccess, isRateLimitError } from "@/lib/ai/provider-pool";
 import { supabaseServer } from "@/lib/supabase/server";
 import type { AccessRow } from "@/lib/types";
 
@@ -162,114 +162,133 @@ Rules:
 5. Never make up information not in the data above.
 6. Keep responses short and action-oriented.`;
 
-  // Get best available provider from the pool
-  const candidates = getSortedProviderCandidates();
-  if (candidates.length === 0) {
-    const toolNames = accessList
-      .filter((r) => r.access_type === "mandatory")
-      .map((r) => r.resource_name)
-      .join(", ");
-    return NextResponse.json({
-      message: `I'm having trouble connecting right now. Your mandatory tools are: ${toolNames || "none listed"}. Try again in a moment.`,
-      toolCalls: [],
-    });
-  }
-
-  const provider = candidates[0];
-
-  // Build OpenAI-compatible messages
+  // Build OpenAI-compatible messages once — reused across provider attempts
   type OAIMessage = { role: string; content: string | null; tool_calls?: unknown[]; tool_call_id?: string; name?: string };
-  const oaiMessages: OAIMessage[] = [
+  const baseMessages: OAIMessage[] = [
     { role: "system", content: systemPrompt },
     ...messages.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
   ];
 
-  const executedToolCalls: Array<{ name: string; args: Record<string, unknown>; result: Record<string, unknown> }> = [];
+  const mandatoryToolNames = accessList
+    .filter((r) => r.access_type === "mandatory")
+    .map((r) => r.resource_name)
+    .join(", ");
 
-  // Tool call loop (max 5 rounds)
-  for (let step = 0; step < 5; step++) {
-    let res: Response;
-    try {
-      res = await fetch(`${provider.baseURL}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${provider.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: provider.model,
-          messages: oaiMessages,
-          tools: TOOLS,
-          tool_choice: "auto",
-          max_tokens: 1000,
-        }),
-        signal: AbortSignal.timeout(30_000),
-      });
-    } catch (err) {
-      const toolNames = accessList
-        .filter((r) => r.access_type === "mandatory")
-        .map((r) => r.resource_name)
-        .join(", ");
-      return NextResponse.json({
-        message: `Connection issue. Your mandatory tools are: ${toolNames || "none listed"}. Please try again.`,
-        toolCalls: [],
-      });
+  const candidates = getSortedProviderCandidates();
+  if (candidates.length === 0) {
+    return NextResponse.json({
+      message: `I'm having trouble connecting right now. Your mandatory tools are: ${mandatoryToolNames || "none listed"}. Try again in a moment.`,
+      toolCalls: [],
+    });
+  }
+
+  // Try each provider in priority order; on failure mark it and move to the next
+  for (const candidate of candidates) {
+    const executedToolCalls: Array<{ name: string; args: Record<string, unknown>; result: Record<string, unknown> }> = [];
+    const oaiMessages: OAIMessage[] = [...baseMessages];
+    let providerFailed = false;
+
+    // Tool call loop (max 5 rounds) for this provider
+    for (let step = 0; step < 5; step++) {
+      let res: Response;
+      try {
+        res = await fetch(`${candidate.baseURL}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${candidate.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: candidate.model,
+            messages: oaiMessages,
+            tools: TOOLS,
+            tool_choice: "auto",
+            max_tokens: 1000,
+          }),
+          signal: AbortSignal.timeout(30_000),
+        });
+      } catch (err) {
+        markProviderFailure(candidate.id, err);
+        providerFailed = true;
+        break;
+      }
+
+      if (!res.ok) {
+        const errText = await res.text();
+        const err = new Error(errText);
+        markProviderFailure(candidate.id, err);
+        // Rate-limit errors shouldn't fall through to the next provider immediately —
+        // markProviderFailure already puts it in cooldown, so just try the next one.
+        providerFailed = true;
+        break;
+      }
+
+      const data = await res.json();
+      const choice = data.choices?.[0];
+      const assistantMsg = choice?.message;
+
+      if (!assistantMsg) {
+        providerFailed = true;
+        markProviderFailure(candidate.id, new Error("Empty response from provider"));
+        break;
+      }
+
+      oaiMessages.push(assistantMsg);
+
+      // No tool calls — final text response
+      if (!assistantMsg.tool_calls?.length) {
+        markProviderSuccess(candidate.id);
+        return NextResponse.json({
+          message: assistantMsg.content ?? "",
+          toolCalls: executedToolCalls,
+        });
+      }
+
+      // Execute tool calls
+      const toolResultMessages: OAIMessage[] = [];
+      for (const tc of assistantMsg.tool_calls) {
+        const args = JSON.parse(tc.function.arguments ?? "{}");
+        let result: Record<string, unknown>;
+
+        if (tc.function.name === "validate_role") {
+          result = await executeValidateRole(args.resource_name, role_id, roleName);
+        } else if (tc.function.name === "request_access") {
+          result = await executeRequestAccess(
+            args.resource_name,
+            args.employee_note,
+            args.is_role_relevant,
+            employee_id,
+            org_id
+          );
+        } else {
+          result = { error: "Unknown tool" };
+        }
+
+        executedToolCalls.push({ name: tc.function.name, args, result });
+        toolResultMessages.push({
+          role: "tool",
+          tool_call_id: tc.id,
+          content: JSON.stringify(result),
+        });
+      }
+
+      oaiMessages.push(...toolResultMessages);
     }
 
-    if (!res.ok) {
-      const errText = await res.text();
-      return NextResponse.json({ message: `AI provider error: ${errText.slice(0, 100)}`, toolCalls: [] });
-    }
-
-    const data = await res.json();
-    const choice = data.choices?.[0];
-    const assistantMsg = choice?.message;
-
-    if (!assistantMsg) break;
-
-    oaiMessages.push(assistantMsg);
-
-    // No tool calls — we have the final text
-    if (!assistantMsg.tool_calls?.length) {
+    if (!providerFailed) {
+      // Reached max tool-call rounds without a final text — treat as success with fallback message
+      markProviderSuccess(candidate.id);
       return NextResponse.json({
-        message: assistantMsg.content ?? "",
+        message: "Done — your requests have been submitted.",
         toolCalls: executedToolCalls,
       });
     }
-
-    // Execute tool calls
-    const toolResultMessages: OAIMessage[] = [];
-    for (const tc of assistantMsg.tool_calls) {
-      const args = JSON.parse(tc.function.arguments ?? "{}");
-      let result: Record<string, unknown>;
-
-      if (tc.function.name === "validate_role") {
-        result = await executeValidateRole(args.resource_name, role_id, roleName);
-      } else if (tc.function.name === "request_access") {
-        result = await executeRequestAccess(
-          args.resource_name,
-          args.employee_note,
-          args.is_role_relevant,
-          employee_id,
-          org_id
-        );
-      } else {
-        result = { error: "Unknown tool" };
-      }
-
-      executedToolCalls.push({ name: tc.function.name, args, result });
-      toolResultMessages.push({
-        role: "tool",
-        tool_call_id: tc.id,
-        content: JSON.stringify(result),
-      });
-    }
-
-    oaiMessages.push(...toolResultMessages);
+    // providerFailed = true → continue to next candidate
   }
 
+  // All providers exhausted
   return NextResponse.json({
-    message: "Done — your requests have been submitted.",
-    toolCalls: executedToolCalls,
+    message: `I'm unable to connect right now. Your mandatory tools are: ${mandatoryToolNames || "none listed"}. Please try again in a moment.`,
+    toolCalls: [],
   });
 }
