@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Inbox, Loader2 } from "lucide-react";
+import { ArrowLeft, Inbox } from "lucide-react";
 import { RequestRow } from "./components/RequestRow";
 import type { AdminRequestRow, Session } from "@/lib/types";
 
@@ -33,45 +33,48 @@ export default function AdminQueuePage() {
 
   if (!session || loading) {
     return (
-      <div className="min-h-screen bg-[var(--canvas)] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+      <div className="min-h-screen bg-canvas">
+        <div className="h-14 border-b border-border" />
+        <div className="mx-auto max-w-5xl px-6 py-8">
+          <div className="skeleton h-64 rounded-xl" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[var(--canvas)] text-zinc-100 font-sans">
-      <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-[var(--canvas)]/85 backdrop-blur-md px-6 py-3.5 flex items-center gap-4">
+    <div className="min-h-screen bg-canvas text-foreground font-sans">
+      <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b border-border bg-canvas/85 px-6 backdrop-blur-md">
         <button
           onClick={() => router.push("/admin")}
-          className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+          className="flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
+          <ArrowLeft className="h-3.5 w-3.5" /> Dashboard
         </button>
-        <h1 className="text-sm font-bold text-zinc-100">Approval Queue</h1>
-        <span className="ml-auto text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-400 px-2.5 py-1 rounded-full font-bold">
-          {rows.length} pending
+        <h1 className="text-sm font-semibold text-foreground">Approval queue</h1>
+        <span className="ml-auto rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-2xs font-semibold text-amber-400">
+          <span className="font-data">{rows.length}</span> pending
         </span>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
+      <main className="mx-auto max-w-5xl animate-fade-in px-6 py-8">
         {rows.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-zinc-600 text-sm gap-3">
-            <Inbox className="w-10 h-10 stroke-[1.5]" />
-            <p className="font-semibold">Queue is empty</p>
-            <p className="text-xs text-zinc-700">All access requests have been reviewed.</p>
+          <div className="flex flex-col items-center justify-center gap-3 py-24 text-sm text-faint">
+            <Inbox className="h-10 w-10 stroke-[1.5]" />
+            <p className="font-semibold text-subtle">Queue is empty</p>
+            <p className="text-xs">All access requests have been reviewed.</p>
           </div>
         ) : (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+          <div className="overflow-hidden rounded-xl border border-border bg-surface">
             <table className="w-full text-left">
-              <thead className="border-b border-zinc-800 text-[10px] uppercase tracking-wider text-zinc-500">
+              <thead className="border-b border-border text-2xs uppercase tracking-wider text-faint">
                 <tr>
-                  <th className="py-3.5 px-4">Employee</th>
-                  <th className="py-3.5 px-4">Resource</th>
-                  <th className="py-3.5 px-4">Source</th>
-                  <th className="py-3.5 px-4">Note</th>
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Actions</th>
+                  <th className="px-4 py-3.5 font-semibold">Employee</th>
+                  <th className="px-4 py-3.5 font-semibold">Resource</th>
+                  <th className="px-4 py-3.5 font-semibold">Source</th>
+                  <th className="px-4 py-3.5 font-semibold">Note</th>
+                  <th className="px-4 py-3.5 font-semibold">Date</th>
+                  <th className="px-4 py-3.5 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>

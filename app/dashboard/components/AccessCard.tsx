@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ExternalLink, Clock, CheckCircle2, XCircle, Circle, Loader2 } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Circle, Loader2, ArrowUpRight } from "lucide-react";
 import type { AccessRow, Session } from "@/lib/types";
 
 type Props = {
@@ -11,26 +11,17 @@ type Props = {
 };
 
 const STATUS_CONFIG = {
-  not_requested: {
-    label: "Not Requested",
-    pill: "bg-zinc-800/80 text-zinc-500 border-zinc-700/60",
-    Icon: Circle,
-  },
-  pending: {
-    label: "Pending",
-    pill: "bg-amber-500/8 text-amber-400 border-amber-500/20",
-    Icon: Clock,
-  },
-  granted: {
-    label: "Active",
-    pill: "bg-emerald-500/8 text-emerald-400 border-emerald-500/20",
-    Icon: CheckCircle2,
-  },
-  denied: {
-    label: "Denied",
-    pill: "bg-red-500/8 text-red-400 border-red-500/20",
-    Icon: XCircle,
-  },
+  not_requested: { label: "Not requested", dot: "bg-faint",       text: "text-subtle"  },
+  pending:       { label: "Pending",       dot: "bg-amber-400",   text: "text-amber-300/90" },
+  granted:       { label: "Active",        dot: "bg-emerald-400", text: "text-emerald-300/90" },
+  denied:        { label: "Denied",        dot: "bg-red-400",     text: "text-red-300/90" },
+} as const;
+
+const STATUS_ICON = {
+  not_requested: Circle,
+  pending: Clock,
+  granted: CheckCircle2,
+  denied: XCircle,
 } as const;
 
 function daysRemaining(requestedAt: string | null, avgDays: number) {
@@ -40,12 +31,15 @@ function daysRemaining(requestedAt: string | null, avgDays: number) {
 }
 
 export function AccessCard({ row, session, onRequested }: Props) {
-  const [loading, setLoading]       = useState(false);
+  const [loading, setLoading] = useState(false);
   const [localStatus, setLocalStatus] = useState(row.access_status);
 
-  const cfg    = STATUS_CONFIG[localStatus];
-  const Icon   = cfg.Icon;
-  const days   = daysRemaining(row.requested_at, row.avg_provisioning_days);
+  const cfg = STATUS_CONFIG[localStatus];
+  const Icon = STATUS_ICON[localStatus];
+  const days = daysRemaining(row.requested_at, row.avg_provisioning_days);
+
+  // Settled states (granted) recede; actionable states (request/denied) lead.
+  const actionable = localStatus === "not_requested" || localStatus === "denied";
 
   const handleRequest = async () => {
     setLoading(true);
@@ -54,56 +48,62 @@ export function AccessCard({ row, session, onRequested }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          employee_id:     session.id,
-          resource_id:     row.resource_id,
-          requested_by:    "employee",
-          is_role_relevant: true,
-          employee_note:   "Requested from dashboard",
+          employee_id: session.id,
+          resource_id: row.resource_id,
+          role_id: session.role_id,
+          requested_by: "employee",
+          employee_note: "Requested from dashboard",
         }),
       });
-      if (res.ok) { setLocalStatus("pending"); onRequested(); }
+      if (res.ok) {
+        const body = await res.json();
+        setLocalStatus(body.auto_approved ? "granted" : "pending");
+        onRequested();
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="animate-rise-in group bg-[var(--surface)] border border-zinc-800/60 hover:border-zinc-700/70 rounded-2xl p-4 flex flex-col gap-3 transition-all duration-200 ease-out">
-
-      {/* Tool name + status pill */}
+    <div
+      className={`animate-rise-in group flex flex-col gap-3 rounded-lg p-4 transition-colors duration-200 ease-out
+        ${actionable
+          ? "bg-surface border border-border hover:border-border-strong"
+          : "border border-border/60 hover:border-border"}`}
+    >
+      {/* Name + status */}
       <div className="flex items-start justify-between gap-3">
-        <div className="space-y-0.5 min-w-0">
-          <h4 className="text-[13px] font-bold text-zinc-100 truncate leading-snug">{row.resource_name}</h4>
+        <div className="min-w-0 space-y-1">
+          <h4 className="truncate text-sm font-semibold leading-snug text-foreground">{row.resource_name}</h4>
           {row.description && (
-            <p className="text-[11px] text-zinc-500 line-clamp-2 leading-relaxed">{row.description}</p>
+            <p className="line-clamp-2 text-xs leading-relaxed text-subtle">{row.description}</p>
           )}
         </div>
-        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-bold shrink-0 ${cfg.pill}`}>
-          <Icon className="w-2.5 h-2.5" />
+        <span className={`inline-flex shrink-0 items-center gap-1.5 text-2xs font-medium ${cfg.text}`}>
+          <Icon className="h-3 w-3" />
           {cfg.label}
         </span>
       </div>
 
       {/* Pending ETA */}
       {localStatus === "pending" && row.avg_provisioning_days > 0 && (
-        <p className="text-[11px] text-amber-400/70 leading-snug">
-          ~{days} day{days !== 1 ? "s" : ""} remaining
-          {row.escalation_contact && (
-            <span className="text-zinc-600"> · {row.escalation_contact}</span>
-          )}
+        <p className="text-xs leading-snug text-amber-300/70">
+          <span className="font-data">~{days}d</span> remaining
+          {row.escalation_contact && <span className="text-faint"> · {row.escalation_contact}</span>}
         </p>
       )}
 
       {/* Action row */}
-      <div className="mt-auto pt-3 border-t border-zinc-800/40">
-        {(localStatus === "not_requested" || localStatus === "denied") && (
+      <div className="mt-auto pt-1">
+        {actionable && (
           <button
             onClick={handleRequest}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-600 disabled:opacity-50 text-white rounded-xl py-2 text-[11px] font-semibold transition-all duration-200 ease-out"
+            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-accent py-2 text-xs font-semibold text-white transition-colors duration-200 ease-out hover:bg-accent-hover disabled:opacity-50"
           >
-            {loading && <Loader2 className="w-3 h-3 animate-spin" />}
-            Request Access
+            {loading && <Loader2 className="h-3 w-3 animate-spin" />}
+            {localStatus === "denied" ? "Request again" : "Request access"}
           </button>
         )}
         {localStatus === "granted" && row.access_link && (
@@ -111,17 +111,17 @@ export function AccessCard({ row, session, onRequested }: Props) {
             href={row.access_link}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center justify-center gap-1.5 w-full bg-emerald-500/8 hover:bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 rounded-xl py-2 text-[11px] font-semibold transition-all"
+            className="flex items-center gap-1.5 text-xs font-medium text-emerald-300/90 transition-colors hover:text-emerald-200"
           >
             Open {row.resource_name}
-            <ExternalLink className="w-3 h-3" />
+            <ArrowUpRight className="h-3 w-3" />
           </a>
         )}
         {localStatus === "granted" && !row.access_link && (
-          <p className="text-center text-[11px] text-emerald-400/60 font-medium">Access granted</p>
+          <p className="text-xs font-medium text-emerald-300/60">Access granted</p>
         )}
         {localStatus === "pending" && (
-          <p className="text-center text-[11px] text-zinc-500 font-medium">Awaiting admin approval</p>
+          <p className="text-xs text-subtle">Awaiting admin approval</p>
         )}
       </div>
     </div>

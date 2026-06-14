@@ -90,7 +90,7 @@ export function SupportBot({ session, onAccessRequested }: Props) {
       {/* Status line */}
       <div className="flex items-center gap-1.5 px-1 pb-2 shrink-0">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        <span className="text-[10px] text-zinc-500">Multi-provider AI · can take actions</span>
+        <span className="text-2xs text-subtle">Multi-provider AI · can take actions</span>
       </div>
 
       {/* Messages */}
@@ -99,10 +99,10 @@ export function SupportBot({ session, onAccessRequested }: Props) {
         {messages.length === 0 && (
           <div className="space-y-3">
             <div className="flex items-start gap-2.5">
-              <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
+              <div className="w-6 h-6 rounded-md bg-accent flex items-center justify-center shrink-0 mt-0.5">
                 <Bot className="w-3.5 h-3.5 text-white" />
               </div>
-              <div className="bg-zinc-800 rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-xs text-zinc-300 leading-relaxed max-w-[90%]">
+              <div className="bg-surface-2 rounded-lg rounded-tl-sm px-3.5 py-2.5 text-xs text-muted leading-relaxed max-w-[90%]">
                 Hi {session.full_name.split(" ")[0]}! I&apos;m your onboarding assistant. I can answer questions, request
                 tool access on your behalf, and help you prioritise your first week.
               </div>
@@ -112,7 +112,7 @@ export function SupportBot({ session, onAccessRequested }: Props) {
                 <button
                   key={s}
                   onClick={() => sendMessage(s)}
-                  className="text-[10px] px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 hover:text-zinc-200 transition-all cursor-pointer"
+                  className="text-2xs px-3 py-1.5 rounded-md bg-surface hover:bg-surface-2 border border-border text-muted hover:text-foreground transition-colors cursor-pointer"
                 >
                   {s}
                 </button>
@@ -127,10 +127,10 @@ export function SupportBot({ session, onAccessRequested }: Props) {
             <div key={msg.id} className={`animate-rise-in flex items-start gap-2.5 ${isUser ? "flex-row-reverse" : ""}`}>
               <div
                 className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
-                  isUser ? "bg-zinc-700" : "bg-indigo-600"
+                  isUser ? "bg-surface-2" : "bg-accent"
                 }`}
               >
-                {isUser ? <User className="w-3.5 h-3.5 text-zinc-300" /> : <Bot className="w-3.5 h-3.5 text-white" />}
+                {isUser ? <User className="w-3.5 h-3.5 text-muted" /> : <Bot className="w-3.5 h-3.5 text-white" />}
               </div>
 
               <div className={`flex flex-col gap-2 max-w-[85%] ${isUser ? "items-end" : "items-start"}`}>
@@ -151,7 +151,7 @@ export function SupportBot({ session, onAccessRequested }: Props) {
                           ? relevant
                             ? "bg-indigo-950/40 border-indigo-500/20 text-indigo-300"
                             : "bg-amber-950/40 border-amber-500/20 text-amber-300"
-                          : "bg-zinc-800 border-zinc-700 text-zinc-400"
+                          : "bg-surface-2 border-border text-muted"
                       }`}
                     >
                       {success ? (
@@ -172,10 +172,10 @@ export function SupportBot({ session, onAccessRequested }: Props) {
                 {/* Message bubble */}
                 {msg.content && (
                   <div
-                    className={`rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
+                    className={`rounded-lg px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
                       isUser
-                        ? "bg-indigo-600 text-white rounded-tr-sm"
-                        : "bg-zinc-800 text-zinc-300 rounded-tl-sm"
+                        ? "bg-accent text-white rounded-tr-sm"
+                        : "bg-surface-2 text-muted rounded-tl-sm"
                     }`}
                   >
                     {msg.content}
@@ -188,11 +188,11 @@ export function SupportBot({ session, onAccessRequested }: Props) {
 
         {isLoading && (
           <div className="flex items-start gap-2.5">
-            <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center shrink-0">
+            <div className="w-6 h-6 rounded-md bg-accent flex items-center justify-center shrink-0">
               <Bot className="w-3.5 h-3.5 text-white" />
             </div>
-            <div className="bg-zinc-800 rounded-2xl rounded-tl-sm px-3.5 py-3">
-              <Loader2 className="w-3.5 h-3.5 text-zinc-500 animate-spin" />
+            <div className="bg-surface-2 rounded-lg rounded-tl-sm px-3.5 py-3">
+              <Loader2 className="w-3.5 h-3.5 text-subtle animate-spin" />
             </div>
           </div>
         )}
@@ -202,19 +202,19 @@ export function SupportBot({ session, onAccessRequested }: Props) {
       {/* Input */}
       <form
         onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
-        className="shrink-0 flex items-center gap-2 pt-3 border-t border-zinc-800/60 mt-2"
+        className="shrink-0 flex items-center gap-2 pt-3 border-t border-border mt-2"
       >
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask me anything…"
           disabled={isLoading}
-          className="flex-1 bg-zinc-900 border border-zinc-800 focus:border-indigo-500/60 text-zinc-200 text-[12px] rounded-xl px-3.5 py-2.5 outline-none transition-colors placeholder:text-zinc-600 disabled:opacity-50"
+          className="flex-1 bg-inset border border-border focus:border-accent text-foreground text-xs rounded-md px-3.5 py-2.5 outline-none transition-colors placeholder:text-faint disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={isLoading || !input.trim()}
-          className="w-9 h-9 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 rounded-xl transition-all duration-200 ease-out active:scale-95 shrink-0"
+          className="w-9 h-9 flex items-center justify-center bg-accent hover:bg-accent-hover disabled:opacity-40 rounded-md transition-colors duration-200 ease-out active:scale-95 shrink-0"
         >
           <Send className="w-3.5 h-3.5 text-white" />
         </button>

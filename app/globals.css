@@ -1,68 +1,161 @@
 @import "tailwindcss";
 
-/*
-  AuraOnboard design tokens.
-  Dark, committed. Neutrals tinted toward the indigo brand hue (~275) so the
-  surface reads intentional rather than generic zinc. Indigo is the single
-  product accent; emerald / amber / red stay status-only.
-*/
-:root {
-  --canvas: oklch(0.165 0.006 275);   /* app background */
-  --surface: oklch(0.205 0.007 275);  /* elevated panels */
-  --foreground: oklch(0.96 0.004 275);
-  --accent: oklch(0.62 0.19 277);      /* indigo-500-ish */
+/* ===========================================================================
+   AuraOnboard design system
+   Dark, low-chroma, neutrals tinted toward the indigo brand hue (~277) so the
+   surface reads engineered rather than generic zinc. Indigo is the single
+   product accent (primary action + current selection). Emerald / amber / red /
+   blue stay strictly semantic. Type is a sharp grotesque (Archivo) with a
+   technical mono (JetBrains Mono) reserved for numeric / identifier data.
+   =========================================================================== */
 
+:root {
+  /* ---- Surfaces (elevation, low to high) ------------------------------- */
+  --canvas:        oklch(0.165 0.006 277);  /* app background           */
+  --surface:       oklch(0.205 0.007 277);  /* panels, cards (L1)       */
+  --surface-2:     oklch(0.238 0.008 277);  /* raised / hover (L2)      */
+  --inset:         oklch(0.148 0.006 277);  /* inputs, wells, code      */
+
+  /* ---- Borders --------------------------------------------------------- */
+  --border:        oklch(0.28 0.008 277);
+  --border-strong: oklch(0.36 0.012 277);
+
+  /* ---- Text (high to low emphasis) ------------------------------------- */
+  --foreground:    oklch(0.96 0.004 277);
+  --muted:         oklch(0.74 0.006 277);
+  --subtle:        oklch(0.60 0.006 277);
+  --faint:         oklch(0.47 0.006 277);
+
+  /* ---- Accent (indigo) ------------------------------------------------- */
+  --accent:        oklch(0.62 0.19 277);
+  --accent-hover:  oklch(0.67 0.18 277);
+  --accent-quiet:  oklch(0.62 0.19 277 / 0.12);
+  --accent-fg:     oklch(0.99 0.004 277);
+
+  /* ---- Semantic status (base hues; tint with /alpha at call site) ------ */
+  --success:       oklch(0.74 0.15 162);
+  --warning:       oklch(0.80 0.13 82);
+  --danger:        oklch(0.66 0.20 22);
+  --info:          oklch(0.72 0.13 235);
+
+  /* ---- Radius scale ---------------------------------------------------- */
+  --radius-sm:     0.375rem;   /* pills, chips, small controls */
+  --radius:        0.625rem;   /* buttons, inputs              */
+  --radius-lg:     0.875rem;   /* panels                       */
+  --radius-xl:     1.125rem;   /* feature panels, modals       */
+
+  /* ---- Motion ---------------------------------------------------------- */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @theme inline {
-  --color-background: var(--canvas);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Color roles → Tailwind utilities (bg-surface, border-border, text-muted…) */
+  --color-background:     var(--canvas);
+  --color-canvas:         var(--canvas);
+  --color-surface:        var(--surface);
+  --color-surface-2:      var(--surface-2);
+  --color-inset:          var(--inset);
+  --color-border:         var(--border);
+  --color-border-strong:  var(--border-strong);
+  --color-foreground:     var(--foreground);
+  --color-muted:          var(--muted);
+  --color-subtle:         var(--subtle);
+  --color-faint:          var(--faint);
+  --color-accent:         var(--accent);
+  --color-accent-hover:   var(--accent-hover);
+
+  /* Fonts */
+  --font-sans: var(--font-archivo), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", monospace;
+
+  /* Radius → Tailwind rounded-* */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  /* ---- Type scale (rem, ~1.2 ratio, tuned line-heights) ---------------- */
+  --text-2xs:   0.6875rem;  --text-2xs--line-height:  1rem;     /* 11px micro-label  */
+  --text-xs:    0.75rem;    --text-xs--line-height:   1.1rem;   /* 12px              */
+  --text-sm:    0.8125rem;  --text-sm--line-height:   1.25rem;  /* 13px dense body   */
+  --text-base:  0.875rem;   --text-base--line-height: 1.5rem;   /* 14px body default */
+  --text-lg:    1rem;       --text-lg--line-height:   1.5rem;   /* 16px              */
+  --text-xl:    1.1875rem;  --text-xl--line-height:   1.55rem;  /* 19px heading      */
+  --text-2xl:   1.4375rem;  --text-2xl--line-height:  1.8rem;   /* 23px              */
+  --text-3xl:   1.75rem;    --text-3xl--line-height:  2.1rem;   /* 28px display      */
 }
 
 body {
   background: var(--canvas);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-archivo), system-ui, -apple-system, sans-serif;
+  font-feature-settings: "cv05" 1, "ss01" 1;  /* Archivo: sharper terminals */
+  letter-spacing: -0.006em;                    /* tightened, technical feel  */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* ---- Motion ---------------------------------------------------------------
-   State-conveying only. 150-260ms, ease-out, no bounce / elastic.            */
+/* Headings sit tighter; the sharpness lives in the tracking, not a display face. */
+h1, h2, h3, h4 { letter-spacing: -0.02em; }
 
-@keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+/* Numeric / identifier data: mono + lining figures. Apply with `font-data`. */
+.font-data { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Layout-stable loading. Apply `.skeleton` to a sized box. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    oklch(0.3 0.008 277 / 0.45),
+    transparent
+  );
+  animation: shimmer 1.4s var(--ease-out-quart) infinite;
 }
 
-@keyframes rise-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+/* ---- Motion: state-conveying only. 150-260ms, ease-out, no bounce -------- */
+@keyframes fade-in  { from { opacity: 0; }                                   to { opacity: 1; } }
+@keyframes rise-in  { from { opacity: 0; transform: translateY(6px); }       to { opacity: 1; transform: translateY(0); } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pop-in   { from { opacity: 0; transform: scale(0.6); }            to { opacity: 1; transform: scale(1); } }
+@keyframes panel-in { from { opacity: 0; transform: scale(0.97) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes shimmer  { 100% { transform: translateX(100%); } }
 
-@keyframes toast-in {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes pop-in {
-  from { opacity: 0; transform: scale(0.6); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-.animate-fade-in { animation: fade-in 0.2s var(--ease-out-quart) both; }
-.animate-rise-in { animation: rise-in 0.24s var(--ease-out-quart) both; }
+.animate-fade-in  { animation: fade-in  0.2s  var(--ease-out-quart) both; }
+.animate-rise-in  { animation: rise-in  0.24s var(--ease-out-quart) both; }
 .animate-toast-in { animation: toast-in 0.26s var(--ease-out-quint) both; }
-.animate-pop-in { animation: pop-in 0.18s var(--ease-out-quart) both; }
+.animate-pop-in   { animation: pop-in   0.18s var(--ease-out-quart) both; }
+.animate-panel-in { animation: panel-in 0.24s var(--ease-out-quint) both; }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Custom subtle scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
 }

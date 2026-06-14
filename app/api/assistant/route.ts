@@ -62,9 +62,9 @@ async function executeValidateRole(
 async function executeRequestAccess(
   resourceName: string,
   employeeNote: string,
-  isRoleRelevant: boolean,
   employeeId: string,
-  orgId: string
+  orgId: string,
+  roleId: string
 ): Promise<Record<string, unknown>> {
   const { data: resource } = await supabaseServer
     .from("resources")
@@ -74,6 +74,17 @@ async function executeRequestAccess(
     .single();
 
   if (!resource) return { success: false, error: `Tool "${resourceName}" not found.` };
+
+  // Server-side role check — do not trust the model-supplied is_role_relevant boolean
+  const { data: roleMapping } = await supabaseServer
+    .from("role_resources")
+    .select("role_id")
+    .eq("resource_id", resource.id)
+    .eq("role_id", roleId)
+    .single();
+
+  const autoApprove = !!roleMapping;
+  const now = new Date().toISOString();
 
   const { data: existing } = await supabaseServer
     .from("employee_access")
@@ -85,27 +96,27 @@ async function executeRequestAccess(
   if (existing) {
     await supabaseServer
       .from("employee_access")
-      .update({ status: "pending", requested_at: new Date().toISOString() })
+      .update(autoApprove
+        ? { status: "granted", granted_at: now }
+        : { status: "pending", requested_at: now })
       .eq("id", existing.id);
   } else {
-    await supabaseServer.from("employee_access").insert({
-      employee_id: employeeId,
-      resource_id: resource.id,
-      status: "pending",
-      requested_at: new Date().toISOString(),
-    });
+    await supabaseServer.from("employee_access").insert(autoApprove
+      ? { employee_id: employeeId, resource_id: resource.id, status: "granted", granted_at: now }
+      : { employee_id: employeeId, resource_id: resource.id, status: "pending", requested_at: now });
   }
 
   await supabaseServer.from("access_requests").insert({
     employee_id: employeeId,
     resource_id: resource.id,
     requested_by: "agent",
-    is_role_relevant: isRoleRelevant,
+    is_role_relevant: autoApprove,
     employee_note: employeeNote,
-    status: "pending",
+    status: autoApprove ? "approved" : "pending",
+    ...(autoApprove ? { reviewed_at: now, admin_note: "Auto-approved — tool mapped to employee role" } : {}),
   });
 
-  return { success: true, status: "pending", resource_name: resourceName };
+  return { success: true, status: autoApprove ? "granted" : "pending", auto_approved: autoApprove, resource_name: resourceName };
 }
 
 export async function POST(request: Request) {
@@ -157,7 +168,7 @@ ${accessJson}
 Rules:
 1. Be specific — use real tool names, provisioning times, and escalation contacts from the data above.
 2. Before requesting any access, call validate_role first.
-3. If a resource is NOT in their role, warn them it will be flagged for manager review, but still offer to request it.
+3. If a resource IS mapped to their role, it will be granted immediately — confirm to them that access is now active. If it is NOT in their role, warn them it will go to manager review, but still offer to submit it.
 4. For "how long" questions, calculate from requested_at to today and subtract from avg_provisioning_days.
 5. Never make up information not in the data above.
 6. Keep responses short and action-oriented.`;
@@ -256,9 +267,9 @@ Rules:
           result = await executeRequestAccess(
             args.resource_name,
             args.employee_note,
-            args.is_role_relevant,
             employee_id,
-            org_id
+            org_id,
+            role_id
           );
         } else {
           result = { error: "Unknown tool" };

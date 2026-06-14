@@ -3,8 +3,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  LogOut, CheckCircle2, Loader2, Map, ChevronLeft, ChevronRight,
-  LayoutGrid, Shield, Users, Sparkles, Circle, Clock, XCircle,
+  LogOut, CheckCircle2, Map, ChevronLeft, ChevronRight,
+  LayoutGrid, Shield, Users, Sparkles, Circle,
   MessageSquare, X,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -20,28 +20,48 @@ const CATEGORY_OPTS: Array<{
   value: CategoryFilter;
   label: string;
   Icon: React.ElementType;
-  inactiveIcon: string;
   activeClass: string;
-  activeDot: string;
 }> = [
-  { value: "all",       label: "All tools",  Icon: LayoutGrid, inactiveIcon: "text-zinc-600", activeClass: "text-indigo-300 bg-indigo-500/12 border-indigo-500/25", activeDot: "bg-indigo-400" },
-  { value: "mandatory", label: "Mandatory",  Icon: Shield,     inactiveIcon: "text-zinc-600", activeClass: "text-red-300 bg-red-500/10 border-red-500/20",          activeDot: "bg-red-400"    },
-  { value: "common",    label: "Common",     Icon: Users,      inactiveIcon: "text-zinc-600", activeClass: "text-zinc-200 bg-zinc-700/50 border-zinc-600/40",        activeDot: "bg-zinc-400"   },
-  { value: "optional",  label: "Optional",   Icon: Sparkles,   inactiveIcon: "text-zinc-600", activeClass: "text-blue-300 bg-blue-500/10 border-blue-500/20",        activeDot: "bg-blue-400"   },
+  { value: "all",       label: "All tools",  Icon: LayoutGrid, activeClass: "text-accent bg-accent/10 border-accent/25" },
+  { value: "mandatory", label: "Mandatory",  Icon: Shield,     activeClass: "text-red-300 bg-red-500/10 border-red-500/20" },
+  { value: "common",    label: "Common",     Icon: Users,      activeClass: "text-foreground bg-surface-2 border-border-strong" },
+  { value: "optional",  label: "Optional",   Icon: Sparkles,   activeClass: "text-blue-300 bg-blue-500/10 border-blue-500/20" },
 ];
 
 const STATUS_OPTS: Array<{
   value: StatusFilter;
   label: string;
-  Icon: React.ElementType;
   activeClass: string;
 }> = [
-  { value: "all",           label: "All",          Icon: Circle,       activeClass: "text-indigo-300 bg-indigo-500/12 border-indigo-500/25" },
-  { value: "granted",       label: "Granted",      Icon: CheckCircle2, activeClass: "text-emerald-300 bg-emerald-500/10 border-emerald-500/20" },
-  { value: "pending",       label: "Pending",      Icon: Clock,        activeClass: "text-amber-300 bg-amber-500/10 border-amber-500/20" },
-  { value: "not_requested", label: "Not requested", Icon: Circle,      activeClass: "text-zinc-300 bg-zinc-800 border-zinc-700" },
-  { value: "denied",        label: "Denied",       Icon: XCircle,      activeClass: "text-red-300 bg-red-500/10 border-red-500/20" },
+  { value: "all",           label: "All",           activeClass: "text-accent bg-accent/10 border-accent/25" },
+  { value: "granted",       label: "Granted",       activeClass: "text-emerald-300 bg-emerald-500/10 border-emerald-500/20" },
+  { value: "pending",       label: "Pending",       activeClass: "text-amber-300 bg-amber-500/10 border-amber-500/20" },
+  { value: "not_requested", label: "Not requested", activeClass: "text-foreground bg-surface-2 border-border-strong" },
+  { value: "denied",        label: "Denied",        activeClass: "text-red-300 bg-red-500/10 border-red-500/20" },
 ];
+
+function DashboardSkeleton() {
+  return (
+    <div className="h-screen bg-canvas flex flex-col overflow-hidden">
+      <div className="h-14 shrink-0 border-b border-border" />
+      <div className="flex-1 flex">
+        <div className="w-[220px] shrink-0 border-r border-border" />
+        <div className="flex-1 p-6 space-y-8">
+          <div className="space-y-3">
+            <div className="skeleton h-3 w-24 rounded" />
+            <div className="skeleton h-7 w-72 rounded" />
+            <div className="skeleton h-4 w-96 rounded" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="skeleton h-32 rounded-lg" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function EmployeeDashboard() {
   const router = useRouter();
@@ -49,7 +69,9 @@ export default function EmployeeDashboard() {
   const [rows, setRows]                     = useState<AccessRow[]>([]);
   const [loading, setLoading]               = useState(true);
   const [showRoadmap, setShowRoadmap]       = useState(false);
-  const [sidebarOpen, setSidebarOpen]       = useState(true);
+  const [sidebarWidth, setSidebarWidth]     = useState(220);
+  const [isDraggingSidebar, setIsDraggingSidebar] = useState(false);
+  const [botWidth, setBotWidth]             = useState(320);
   const [botOpen, setBotOpen]               = useState(true);
   const [filterCategory, setFilterCategory] = useState<CategoryFilter>("all");
   const [filterStatus, setFilterStatus]     = useState<StatusFilter>("all");
@@ -87,13 +109,48 @@ export default function EmployeeDashboard() {
     return () => { supabase.removeChannel(channel); };
   }, [session, fetchDashboard]);
 
-  if (!session || loading) {
-    return (
-      <div className="min-h-screen bg-[var(--canvas)] flex items-center justify-center">
-        <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
-      </div>
-    );
-  }
+  if (!session || loading) return <DashboardSkeleton />;
+
+  const sidebarOpen = sidebarWidth > 100;
+
+  const handleSidebarDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDraggingSidebar(true);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    const onMove = (ev: MouseEvent) => {
+      setSidebarWidth(Math.max(56, Math.min(360, ev.clientX)));
+    };
+    const onUp = () => {
+      setIsDraggingSidebar(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      setSidebarWidth((prev) => (prev < 100 ? 56 : prev));
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
+  const handleBotDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = botWidth;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    const onMove = (ev: MouseEvent) => {
+      setBotWidth(Math.max(260, Math.min(560, startWidth + (startX - ev.clientX))));
+    };
+    const onUp = () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
 
   const mandatory = rows.filter((r) => r.access_type === "mandatory");
   const common    = rows.filter((r) => r.access_type === "common");
@@ -119,53 +176,52 @@ export default function EmployeeDashboard() {
   const onRequested = () => fetchDashboard(session.id);
 
   const SECTIONS = [
-    { key: "mandatory", label: "Mandatory", accent: "text-red-400",  sub: `${mandatory.length} tools required for your role`, items: mandatory },
-    { key: "common",    label: "Common",    accent: "text-zinc-400", sub: `Available to everyone in ${session.org_name}`,       items: common    },
-    { key: "optional",  label: "Optional",  accent: "text-blue-400", sub: "Request if needed for your work",                    items: optional  },
+    { key: "mandatory", label: "Mandatory", dot: "bg-red-400",     sub: `${mandatory.length} required for your role`,  items: mandatory },
+    { key: "common",    label: "Common",    dot: "bg-faint",       sub: `Available to everyone at ${session.org_name}`, items: common    },
+    { key: "optional",  label: "Optional",  dot: "bg-blue-400",    sub: "Request if your work needs it",                items: optional  },
   ];
 
   return (
-    <div className="h-screen bg-[var(--canvas)] text-zinc-100 font-sans flex flex-col overflow-hidden">
+    <div className="h-screen bg-canvas text-foreground font-sans flex flex-col overflow-hidden">
 
       {/* ── HEADER ─────────────────────────────────────────────────────── */}
-      <header className="shrink-0 z-40 border-b border-zinc-800/80 bg-[var(--canvas)]/90 backdrop-blur-md px-5 h-[52px] flex items-center justify-between gap-4">
+      <header className="shrink-0 z-40 h-14 flex items-center justify-between gap-4 border-b border-border bg-canvas/90 px-5 backdrop-blur-md">
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white text-[11px] shrink-0"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white"
             style={{ background: session.color_hex }}
           >
             {session.full_name[0]}
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[13px] font-bold text-zinc-100 truncate">{session.full_name}</span>
+            <div className="flex items-center gap-2">
+              <span className="truncate text-sm font-semibold text-foreground">{session.full_name}</span>
               <span
-                className="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0"
-                style={{ background: session.color_hex + "20", color: session.color_hex }}
+                className="shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold"
+                style={{ background: session.color_hex + "22", color: session.color_hex }}
               >
                 {session.role_name}
               </span>
             </div>
-            <p className="text-[11px] text-zinc-500 truncate">{session.email} · {session.org_name}</p>
+            <p className="truncate text-xs text-subtle">{session.email} · {session.org_name}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {/* Bot toggle when bot is closed */}
           {!botOpen && (
             <button
               onClick={() => setBotOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 transition-all"
+              className="flex items-center gap-1.5 rounded-md border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"
             >
-              <MessageSquare className="w-3.5 h-3.5" />
+              <MessageSquare className="h-3.5 w-3.5" />
               AI Assistant
             </button>
           )}
           <button
             onClick={() => { localStorage.removeItem("onboard-session"); router.push("/login"); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all"
+            className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:bg-surface hover:text-foreground"
           >
-            <LogOut className="w-3.5 h-3.5" /> Sign Out
+            <LogOut className="h-3.5 w-3.5" /> Sign out
           </button>
         </div>
       </header>
@@ -175,57 +231,58 @@ export default function EmployeeDashboard() {
 
         {/* ── LEFT SIDEBAR ───────────────────────────────────────────── */}
         <aside
-          className="shrink-0 border-r border-zinc-800/70 flex flex-col overflow-hidden"
+          className="relative shrink-0 border-r border-border flex flex-col overflow-hidden"
           style={{
-            width: sidebarOpen ? 220 : 52,
-            transition: "width 260ms cubic-bezier(0.25, 1, 0.5, 1)",
+            width: sidebarWidth,
+            transition: isDraggingSidebar ? "none" : "width 260ms cubic-bezier(0.25, 1, 0.5, 1)",
           }}
         >
-          {/* Sidebar header */}
-          <div className={`h-[48px] border-b border-zinc-800/60 flex items-center shrink-0 ${sidebarOpen ? "px-4 justify-between" : "justify-center"}`}>
-            {sidebarOpen && (
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Filters</span>
-            )}
+          {/* Drag handle — right edge */}
+          <div
+            onMouseDown={handleSidebarDragStart}
+            className="absolute inset-y-0 -right-2 z-10 w-4 cursor-col-resize flex items-center justify-center group"
+          >
+            <div className="w-1 h-8 bg-border group-hover:bg-accent transition-colors duration-150 rounded-full" />
+          </div>
+
+          <div className={`flex h-12 shrink-0 items-center border-b border-border ${sidebarOpen ? "px-4 justify-between" : "justify-center"}`}>
+            {sidebarOpen && <span className="text-2xs font-semibold uppercase tracking-widest text-faint">Filters</span>}
             <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="w-7 h-7 rounded-lg hover:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-300 transition-all shrink-0"
+              onClick={() => setSidebarWidth(sidebarOpen ? 56 : 220)}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface hover:text-foreground"
               aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
             >
-              {sidebarOpen
-                ? <ChevronLeft className="w-3.5 h-3.5" />
-                : <ChevronRight className="w-3.5 h-3.5" />}
+              {sidebarOpen ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
             </button>
           </div>
 
-          {/* Sidebar body */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-6 py-5">
 
-            {/* ── Progress ── */}
+            {/* Progress */}
             <div className={sidebarOpen ? "px-4" : "px-2"}>
               {sidebarOpen ? (
                 <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Mandatory</p>
+                  <p className="text-2xs font-semibold uppercase tracking-widest text-faint">Mandatory</p>
                   <div className="space-y-1.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[11px] text-zinc-400">{grantedCount} / {mandatory.length} granted</span>
-                      <span className="text-[11px] font-semibold text-zinc-300">{Math.round(mandatoryPct)}%</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted"><span className="font-data">{grantedCount}/{mandatory.length}</span> granted</span>
+                      <span className="font-data text-xs font-semibold text-foreground">{Math.round(mandatoryPct)}%</span>
                     </div>
-                    <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-1 overflow-hidden rounded-full bg-surface-2">
                       <div
-                        className={`h-full rounded-full ${allDone ? "bg-emerald-500" : "bg-indigo-500"}`}
+                        className={`h-full rounded-full ${allDone ? "bg-emerald-500" : "bg-accent"}`}
                         style={{ width: `${mandatoryPct}%`, transition: "width 700ms cubic-bezier(0.25, 1, 0.5, 1)" }}
                       />
                     </div>
                   </div>
                 </div>
               ) : (
-                /* Collapsed: mini SVG ring */
                 <div className="flex justify-center" title={`${Math.round(mandatoryPct)}% mandatory complete`}>
-                  <svg className="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="14" fill="none" stroke="oklch(0.26 0.008 275)" strokeWidth="3.5" />
+                  <svg className="h-8 w-8 -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="14" fill="none" stroke="oklch(0.26 0.008 277)" strokeWidth="3.5" />
                     <circle
                       cx="18" cy="18" r="14" fill="none"
-                      stroke={allDone ? "oklch(0.7 0.15 160)" : "oklch(0.62 0.19 277)"}
+                      stroke={allDone ? "oklch(0.74 0.15 162)" : "oklch(0.62 0.19 277)"}
                       strokeWidth="3.5"
                       strokeDasharray={`${(mandatoryPct / 100) * 87.96} 87.96`}
                       strokeLinecap="round"
@@ -235,27 +292,24 @@ export default function EmployeeDashboard() {
               )}
             </div>
 
-            {/* ── Roadmap CTA ── */}
+            {/* Roadmap CTA */}
             <div className={sidebarOpen ? "px-4" : "px-2"}>
               <button
                 onClick={() => setShowRoadmap(true)}
                 title="View onboarding roadmap"
-                className={`w-full flex items-center rounded-xl border border-indigo-500/20 bg-indigo-600/8 hover:bg-indigo-600/16 text-indigo-400 transition-all duration-200 ease-out
+                className={`flex w-full items-center rounded-lg border border-accent/20 bg-accent/[0.07] text-accent transition-colors duration-200 hover:bg-accent/[0.14]
                   ${sidebarOpen ? "gap-2.5 px-3 py-2.5" : "justify-center p-2.5"}`}
               >
-                <Map className="w-3.5 h-3.5 shrink-0" />
-                {sidebarOpen && <span className="text-[11px] font-medium">View roadmap</span>}
+                <Map className="h-3.5 w-3.5 shrink-0" />
+                {sidebarOpen && <span className="text-xs font-medium">View roadmap</span>}
               </button>
             </div>
 
-            {/* Divider */}
-            <div className={`border-t border-zinc-800/60 ${sidebarOpen ? "mx-4" : "mx-2"}`} />
+            <div className={`border-t border-border ${sidebarOpen ? "mx-4" : "mx-2"}`} />
 
-            {/* ── Category filter ── */}
+            {/* Category filter */}
             <div className={sidebarOpen ? "px-3" : "px-1.5"}>
-              {sidebarOpen && (
-                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 px-1">Category</p>
-              )}
+              {sidebarOpen && <p className="mb-2 px-1 text-2xs font-semibold uppercase tracking-widest text-faint">Category</p>}
               <div className="space-y-0.5">
                 {CATEGORY_OPTS.map(({ value, label, Icon, activeClass }) => {
                   const active = filterCategory === value;
@@ -265,20 +319,15 @@ export default function EmployeeDashboard() {
                       key={value}
                       onClick={() => setFilterCategory(value)}
                       title={sidebarOpen ? undefined : label}
-                      className={`w-full flex items-center rounded-xl border text-[11px] font-medium transition-all duration-150 ease-out
+                      className={`flex w-full items-center rounded-md border text-xs font-medium transition-colors duration-150
                         ${sidebarOpen ? "gap-2.5 px-2.5 py-2" : "justify-center p-2.5"}
-                        ${active
-                          ? activeClass
-                          : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 border-transparent"
-                        }`}
+                        ${active ? activeClass : "border-transparent text-subtle hover:bg-surface hover:text-foreground"}`}
                     >
-                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
                       {sidebarOpen && (
                         <>
                           <span className="flex-1 text-left">{label}</span>
-                          <span className={`text-[10px] tabular-nums font-semibold ${active ? "opacity-80" : "text-zinc-600"}`}>
-                            {count}
-                          </span>
+                          <span className={`font-data text-2xs ${active ? "opacity-80" : "text-faint"}`}>{count}</span>
                         </>
                       )}
                     </button>
@@ -287,13 +336,11 @@ export default function EmployeeDashboard() {
               </div>
             </div>
 
-            {/* ── Status filter ── */}
+            {/* Status filter */}
             <div className={sidebarOpen ? "px-3" : "px-1.5"}>
-              {sidebarOpen && (
-                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 px-1">Status</p>
-              )}
+              {sidebarOpen && <p className="mb-2 px-1 text-2xs font-semibold uppercase tracking-widest text-faint">Status</p>}
               <div className="space-y-0.5">
-                {STATUS_OPTS.map(({ value, label, Icon, activeClass }) => {
+                {STATUS_OPTS.map(({ value, label, activeClass }) => {
                   const count  = value === "all" ? rows.length : rows.filter((r) => r.access_status === value).length;
                   if (value !== "all" && count === 0) return null;
                   const active = filterStatus === value;
@@ -302,24 +349,17 @@ export default function EmployeeDashboard() {
                       key={value}
                       onClick={() => setFilterStatus(value)}
                       title={sidebarOpen ? undefined : label}
-                      className={`w-full flex items-center rounded-xl border text-[11px] font-medium transition-all duration-150 ease-out
+                      className={`flex w-full items-center rounded-md border text-xs font-medium transition-colors duration-150
                         ${sidebarOpen ? "gap-2.5 px-2.5 py-2" : "justify-center p-2.5"}
-                        ${active
-                          ? activeClass
-                          : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 border-transparent"
-                        }`}
+                        ${active ? activeClass : "border-transparent text-subtle hover:bg-surface hover:text-foreground"}`}
                     >
-                      {/* Radio indicator dot */}
-                      <span className={`w-3.5 h-3.5 shrink-0 rounded-full border flex items-center justify-center transition-all
-                        ${active ? "border-current" : "border-zinc-700"}`}>
-                        {active && <span className="w-1.5 h-1.5 rounded-full bg-current" />}
+                      <span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border transition-colors ${active ? "border-current" : "border-border-strong"}`}>
+                        {active && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                       </span>
                       {sidebarOpen && (
                         <>
-                          <span className="flex-1 text-left capitalize">{label}</span>
-                          <span className={`text-[10px] tabular-nums font-semibold ${active ? "opacity-80" : "text-zinc-600"}`}>
-                            {count}
-                          </span>
+                          <span className="flex-1 text-left">{label}</span>
+                          <span className={`font-data text-2xs ${active ? "opacity-80" : "text-faint"}`}>{count}</span>
                         </>
                       )}
                     </button>
@@ -332,53 +372,49 @@ export default function EmployeeDashboard() {
 
         {/* ── MAIN CONTENT ───────────────────────────────────────────── */}
         <main className="flex-1 overflow-y-auto min-w-0">
-          <div className="p-6 space-y-7 animate-fade-in max-w-5xl">
+          <div className="animate-fade-in max-w-5xl px-8 py-8 space-y-9">
 
-            {/* Welcome banner */}
-            <div className="rounded-2xl border border-zinc-800/60 bg-[var(--surface)] px-6 py-5 flex items-center gap-5">
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider mb-1">Welcome aboard</p>
-                <h1 className="text-[17px] font-bold text-zinc-50 leading-snug">
+            {/* Editorial welcome header (open, not a card) */}
+            <div className="flex items-end justify-between gap-6 border-b border-border pb-7">
+              <div className="min-w-0">
+                <p className="mb-1.5 text-2xs font-semibold uppercase tracking-widest text-accent">Welcome aboard</p>
+                <h1 className="text-2xl font-semibold leading-tight text-foreground">
                   Hi {session.full_name.split(" ")[0]}, you&apos;re a {session.role_name}
                 </h1>
-                <p className="text-[13px] text-zinc-500 mt-1 leading-relaxed">
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-subtle">
                   {allDone
                     ? "All mandatory tools are ready. You're set up and good to go."
-                    : `${mandatory.length - grantedCount} mandatory tool${mandatory.length - grantedCount !== 1 ? "s" : ""} still need access. Use the bot or request below.`}
+                    : `${mandatory.length - grantedCount} mandatory tool${mandatory.length - grantedCount !== 1 ? "s" : ""} still need access. Use the assistant or request below.`}
                 </p>
               </div>
               {allDone ? (
-                <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/10">
+                  <CheckCircle2 className="h-6 w-6 text-emerald-400" />
                 </div>
               ) : (
-                <div className="text-right shrink-0">
-                  <p className="text-2xl font-bold text-zinc-100 tabular-nums leading-none">{Math.round(mandatoryPct)}%</p>
-                  <p className="text-[10px] text-zinc-500 mt-1">setup complete</p>
+                <div className="shrink-0 text-right">
+                  <p className="font-data text-3xl font-semibold leading-none text-foreground">{Math.round(mandatoryPct)}<span className="text-xl text-subtle">%</span></p>
+                  <p className="mt-1.5 text-2xs uppercase tracking-wider text-faint">setup complete</p>
                 </div>
               )}
             </div>
 
             {/* Active filter pill + clear */}
             {isFiltered && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] text-zinc-500">Showing</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-subtle">Showing</span>
                 {filterCategory !== "all" && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-[11px] font-semibold text-zinc-300 capitalize">
-                    {filterCategory}
-                  </span>
+                  <span className="rounded-md border border-border bg-surface px-2.5 py-1 text-xs font-medium capitalize text-muted">{filterCategory}</span>
                 )}
                 {filterStatus !== "all" && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-[11px] font-semibold text-zinc-300">
-                    {filterStatus.replace("_", " ")}
-                  </span>
+                  <span className="rounded-md border border-border bg-surface px-2.5 py-1 text-xs font-medium text-muted">{filterStatus.replace("_", " ")}</span>
                 )}
-                <span className="text-[11px] text-zinc-600">· {filteredRows.length} tool{filteredRows.length !== 1 ? "s" : ""}</span>
+                <span className="text-xs text-faint">· <span className="font-data">{filteredRows.length}</span> tool{filteredRows.length !== 1 ? "s" : ""}</span>
                 <button
                   onClick={() => { setFilterCategory("all"); setFilterStatus("all"); }}
-                  className="ml-0.5 inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
+                  className="ml-0.5 inline-flex items-center gap-1 text-xs font-medium text-accent transition-colors hover:text-accent-hover"
                 >
-                  <X className="w-3 h-3" /> Clear
+                  <X className="h-3 w-3" /> Clear
                 </button>
               </div>
             )}
@@ -386,27 +422,28 @@ export default function EmployeeDashboard() {
             {/* Tool sections */}
             {isFiltered ? (
               filteredRows.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {filteredRows.map((r) => (
                     <AccessCard key={r.resource_id} row={r} session={session} onRequested={onRequested} />
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-20 gap-3 text-zinc-600">
-                  <Circle className="w-8 h-8 stroke-[1.5]" />
+                <div className="flex flex-col items-center justify-center gap-3 py-20 text-faint">
+                  <Circle className="h-8 w-8 stroke-[1.5]" />
                   <p className="text-sm">No tools match this filter.</p>
                 </div>
               )
             ) : (
               <>
-                {SECTIONS.map(({ key, label, accent, sub, items }) =>
+                {SECTIONS.map(({ key, label, dot, sub, items }) =>
                   items.length > 0 ? (
-                    <section key={key} className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <h2 className={`text-[11px] font-bold uppercase tracking-wider ${accent}`}>{label}</h2>
-                        <span className="text-[10px] text-zinc-600">{sub}</span>
+                    <section key={key} className="space-y-3.5">
+                      <div className="flex items-baseline gap-2.5">
+                        <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+                        <h2 className="text-sm font-semibold text-foreground">{label}</h2>
+                        <span className="text-xs text-faint">{sub}</span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                         {items.map((r) => (
                           <AccessCard key={r.resource_id} row={r} session={session} onRequested={onRequested} />
                         ))}
@@ -415,8 +452,8 @@ export default function EmployeeDashboard() {
                   ) : null
                 )}
                 {rows.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-20 gap-3 text-zinc-600">
-                    <CheckCircle2 className="w-10 h-10 stroke-[1.5]" />
+                  <div className="flex flex-col items-center justify-center gap-3 py-20 text-faint">
+                    <CheckCircle2 className="h-10 w-10 stroke-[1.5]" />
                     <p className="text-sm">No resources configured for your role yet.</p>
                   </div>
                 )}
@@ -425,24 +462,39 @@ export default function EmployeeDashboard() {
           </div>
         </main>
 
-        {/* ── RIGHT PANEL — AI Bot ────────────────────────────────────── */}
+        {/* ── RIGHT PANEL — AI Bot (floating) ────────────────────────── */}
         {botOpen && (
-          <aside className="shrink-0 border-l border-zinc-800/70 flex flex-col" style={{ width: 300 }}>
-            {/* Bot header with close */}
-            <div className="h-[48px] border-b border-zinc-800/60 px-4 flex items-center justify-between shrink-0">
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">AI Assistant</span>
+          <div
+            className="animate-panel-in fixed z-30 flex flex-col rounded-xl border border-border-strong bg-surface/95 backdrop-blur-xl shadow-2xl shadow-black/50"
+            style={{
+              width: botWidth,
+              top: "calc(3.5rem + 8px)",
+              right: 12,
+              bottom: 12,
+            }}
+          >
+            {/* Drag handle — left edge */}
+            <div
+              onMouseDown={handleBotDragStart}
+              className="absolute inset-y-0 -left-2 z-10 w-4 cursor-col-resize flex items-center justify-center group"
+            >
+              <div className="w-1 h-8 bg-border group-hover:bg-accent transition-colors duration-150 rounded-full" />
+            </div>
+
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
+              <span className="text-2xs font-semibold uppercase tracking-widest text-faint">AI Assistant</span>
               <button
                 onClick={() => setBotOpen(false)}
-                className="w-7 h-7 rounded-lg hover:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-300 transition-all"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface-2 hover:text-foreground"
                 aria-label="Close assistant"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
             <div className="flex-1 min-h-0 p-3">
               <SupportBot session={session} onAccessRequested={onRequested} />
             </div>
-          </aside>
+          </div>
         )}
       </div>
 

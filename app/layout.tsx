@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Archivo, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { SimLauncher } from "@/components/SimLauncher";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Sharp, technical grotesque for all UI text.
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Reserved for numeric / identifier data via the `font-data` / `font-mono` classes.
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -27,9 +31,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${archivo.variable} ${jetbrainsMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-[var(--canvas)] text-zinc-100 selection:bg-indigo-500 selection:text-white">
+      <body className="min-h-full flex flex-col bg-canvas text-foreground selection:bg-accent selection:text-white">
         <Providers>
           {children}
           <SimLauncher />
