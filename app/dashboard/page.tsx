@@ -109,6 +109,26 @@ export default function EmployeeDashboard() {
     return () => { supabase.removeChannel(channel); };
   }, [session, fetchDashboard]);
 
+  // Fallback sync (in case Realtime replication isn't enabled / cross-window):
+  // refetch when the tab regains focus, and poll while anything is still pending.
+  const hasPending = rows.some((r) => r.access_status === "pending");
+  useEffect(() => {
+    if (!session) return;
+    const refetch = () => fetchDashboard(session.id);
+
+    const onVisible = () => { if (document.visibilityState === "visible") refetch(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refetch);
+
+    const interval = hasPending ? setInterval(refetch, 6000) : null;
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refetch);
+      if (interval) clearInterval(interval);
+    };
+  }, [session, fetchDashboard, hasPending]);
+
   if (!session || loading) return <DashboardSkeleton />;
 
   const sidebarOpen = sidebarWidth > 100;

@@ -31,11 +31,14 @@ async function executeBulkApprove(requestIds: string[], adminId: string): Promis
     return { success: false, message: "No request IDs provided." };
   }
 
+  // Dedupe IDs so a model that repeats IDs can't double-count
+  const uniqueIds = Array.from(new Set(requestIds));
+
   // Fetch requests to verify they are still pending (standard or out-of-scope)
   const { data: requests } = await supabaseServer
     .from("access_requests")
     .select("id, employee_id, resource_id, is_role_relevant")
-    .in("id", requestIds)
+    .in("id", uniqueIds)
     .eq("status", "pending");
 
   if (!requests || requests.length === 0) {
@@ -214,13 +217,31 @@ FORMAT RULES FOR SUMMARIES:
         });
       }
 
+      // Once an approval has actually gone through, stop the loop and return a
+      // clean summary. This prevents the model from re-calling the tool on later
+      // steps (which would find nothing pending and surface "Failed" badges).
+      const successfulApprovals = executedToolCalls.filter(
+        (tc) => tc.name === "bulk_approve_requests" && (tc.result as { success?: boolean }).success,
+      );
+      if (successfulApprovals.length > 0) {
+        markProviderSuccess(candidate.id);
+        const total = successfulApprovals.reduce(
+          (n, tc) => n + ((tc.result as { approved_count?: number }).approved_count ?? 0),
+          0,
+        );
+        return NextResponse.json({
+          message: `Done — approved ${total} request${total === 1 ? "" : "s"}. The queue is now clear.`,
+          toolCalls: successfulApprovals,
+        });
+      }
+
       oaiMessages.push(...toolResultMessages);
     }
 
     if (!providerFailed) {
       markProviderSuccess(candidate.id);
       return NextResponse.json({
-        message: "Done — the standard requests have been approved.",
+        message: "I've finished reviewing the queue.",
         toolCalls: executedToolCalls,
       });
     }
