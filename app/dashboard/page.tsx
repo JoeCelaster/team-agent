@@ -101,7 +101,7 @@ export default function EmployeeDashboard() {
     const channel = supabase
       .channel("access-updates")
       .on("postgres_changes", {
-        event: "UPDATE", schema: "public",
+        event: "*", schema: "public",
         table: "employee_access",
         filter: `employee_id=eq.${session.id}`,
       }, () => fetchDashboard(session.id))
