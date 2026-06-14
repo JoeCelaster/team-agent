@@ -9,8 +9,8 @@ const TOOLS = [
   {
     type: "function",
     function: {
-      name: "bulk_approve_standard_requests",
-      description: "Approve a list of standard (role-relevant) access requests in bulk.",
+      name: "bulk_approve_requests",
+      description: "Approve a list of pending access requests in bulk. Works for both standard (role-relevant) and out-of-scope requests once the admin has confirmed.",
       parameters: {
         type: "object",
         properties: {
@@ -31,16 +31,15 @@ async function executeBulkApprove(requestIds: string[], adminId: string): Promis
     return { success: false, message: "No request IDs provided." };
   }
 
-  // Fetch requests to verify they are pending and role relevant
+  // Fetch requests to verify they are still pending (standard or out-of-scope)
   const { data: requests } = await supabaseServer
     .from("access_requests")
     .select("id, employee_id, resource_id, is_role_relevant")
     .in("id", requestIds)
-    .eq("status", "pending")
-    .eq("is_role_relevant", true);
+    .eq("status", "pending");
 
   if (!requests || requests.length === 0) {
-    return { success: false, message: "No standard pending requests found to approve. Out-of-scope requests must be approved manually." };
+    return { success: false, message: "No matching pending requests found to approve." };
   }
 
   const now = new Date().toISOString();
@@ -74,9 +73,9 @@ async function executeBulkApprove(requestIds: string[], adminId: string): Promis
     approvedCount++;
   }
 
-  return { 
-    success: true, 
-    message: `Successfully approved ${approvedCount} standard request(s).`,
+  return {
+    success: true,
+    message: `Successfully approved ${approvedCount} request(s).`,
     approved_count: approvedCount
   };
 }
@@ -108,21 +107,20 @@ ${queueJson}
 
 Operational Rules:
 1. NEVER use markdown tables. Format all queue summaries as grouped lists as shown below.
-2. Distinguish between "Standard" (mapped to role, auto-approvable) and "Out-of-Scope" (manual review needed).
-3. NEVER auto-approve requests on your own. 
-4. TWO-STEP VERIFICATION FOR AUTO-APPROVAL:
-   - Step 1 (Declaration): When the admin asks to "auto approve" or "approve standard ones", you MUST first list exactly which standard requests you are going to approve (Employee Name + Resource) and explicitly ask: "I am going to auto approve the following standard requests: [List]. Do you want to proceed?"
-   - Step 2 (Execution): ONLY after the admin confirms (e.g., "Yes", "Proceed", "Go ahead"), use the \`bulk_approve_standard_requests\` tool with the IDs of those standard requests.
-5. Out-of-scope requests MUST be explicitly mentioned as requiring manual review.
-6. Keep your tone professional, concise, and helpful.
+2. Label each request as "Standard" (mapped to the employee's role) or "Out of Scope" (not mapped to their role) so the admin has full context. BOTH types can be approved — out-of-scope is NOT blocked, it just needs the admin's eyes.
+3. NEVER approve requests on your own without confirmation.
+4. TWO-STEP VERIFICATION FOR APPROVAL:
+   - Step 1 (Declaration): When the admin asks to approve (e.g. "approve all", "approve standard ones", "approve the out-of-scope ones too"), first list exactly which requests you are going to approve (Employee Name → Resource, with a "(out of scope)" tag where relevant) and explicitly ask: "I am going to approve the following requests: [List]. Do you want to proceed?"
+   - Step 2 (Execution): ONLY after the admin confirms (e.g., "Yes", "Proceed", "Go ahead"), call the \`bulk_approve_requests\` tool with the IDs of those requests. If the admin only asked for standard ones, include only standard IDs; if they asked for all, include every pending ID.
+5. Keep your tone professional, concise, and helpful.
 
 FORMAT RULES FOR SUMMARIES:
-- Group requests into two sections: "**Standard (auto-approvable)**" and "**Out of Scope (manual review)**"
+- Group requests into two sections: "**Standard**" and "**Out of Scope**" (both are approvable).
 - Use this format for each entry:
   • Employee Name (Role) → Resource Name
 
 - Deduplicate and show count if same person has multiple requests for the same resource (e.g., "• Joe Daniel (UI Engineer) → AWS Console (2 requests)")
-- End with a summary line like: "**Summary: N standard · N out-of-scope**"
+- End with a summary line like: "**Summary: N standard · N out-of-scope · N total**"
 - Add an empty line between the two groups.
 - NEVER use tables. NEVER use pipes or dashes to create table-like formatting.`;
 
@@ -202,7 +200,7 @@ FORMAT RULES FOR SUMMARIES:
         const args = JSON.parse(tc.function.arguments ?? "{}");
         let result: Record<string, unknown>;
 
-        if (tc.function.name === "bulk_approve_standard_requests") {
+        if (tc.function.name === "bulk_approve_requests") {
           result = await executeBulkApprove(args.request_ids, admin_id);
         } else {
           result = { error: "Unknown tool" };

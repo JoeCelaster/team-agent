@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Loader2, CheckCircle2, Sparkles, XCircle, Plus, Check, X } from "lucide-react";
+import { Send, Bot, User, Loader2, CheckCircle2, Sparkles, XCircle, Plus, Check, X, SquarePen } from "lucide-react";
 import type { Session, AdminRequestRow } from "@/lib/types";
 
 type ToolCall = {
@@ -25,16 +25,36 @@ type Props = {
 
 const STARTERS = [
   "Summarize pending queue",
-  "Auto approve standard requests",
+  "Approve all pending requests",
 ];
 
 export function ApprovalAssistant({ session, queue, onAction }: Props) {
+  const storageKey = `onboard-chat:admin:${session.id}`;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Hydrate persisted history on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) setMessages(JSON.parse(raw) as ChatMessage[]);
+    } catch { /* ignore corrupt storage */ }
+    setHydrated(true);
+  }, [storageKey]);
+
+  // Persist on every change (after hydration, so we don't clobber stored history with the initial empty state)
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      if (messages.length === 0) localStorage.removeItem(storageKey);
+      else localStorage.setItem(storageKey, JSON.stringify(messages));
+    } catch { /* ignore quota errors */ }
+  }, [messages, hydrated, storageKey]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -86,7 +106,7 @@ export function ApprovalAssistant({ session, queue, onAction }: Props) {
       ]);
 
       // Trigger dashboard refetch if agent approved requests
-      if ((data.toolCalls as ToolCall[])?.some((tc) => tc.name === "bulk_approve_standard_requests" && tc.result?.success)) {
+      if ((data.toolCalls as ToolCall[])?.some((tc) => tc.name === "bulk_approve_requests" && tc.result?.success)) {
         onAction();
       }
     } catch {
@@ -108,9 +128,20 @@ export function ApprovalAssistant({ session, queue, onAction }: Props) {
             <Sparkles className="w-4 h-4 text-indigo-400" />
             <h3 className="text-sm font-medium text-foreground">Approval Assistant</h3>
           </div>
-          <span className="text-2xs text-subtle px-2 py-0.5 rounded-full border border-border bg-surface-2">
-            {queue.length} pending
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-2xs text-subtle px-2 py-0.5 rounded-full border border-border bg-surface-2">
+              {queue.length} pending
+            </span>
+            {messages.length > 0 && (
+              <button
+                onClick={() => setMessages([])}
+                title="New conversation"
+                className="text-faint hover:text-muted transition-colors p-0.5 rounded"
+              >
+                <SquarePen className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -123,7 +154,7 @@ export function ApprovalAssistant({ session, queue, onAction }: Props) {
                 <Bot className="w-3.5 h-3.5 text-white" />
               </div>
               <div className="bg-surface-2 rounded-lg rounded-tl-sm px-3.5 py-2.5 text-xs text-muted leading-relaxed max-w-[90%]">
-                Hi {session.full_name.split(" ")[0]}! I can help you process requests faster. I can list which ones are standard and auto-approve them with your confirmation.
+                Hi {session.full_name.split(" ")[0]}! I can help you process requests faster. I&apos;ll list every pending request — standard and out-of-scope — and approve any of them with your confirmation.
               </div>
             </div>
               <div className="flex flex-wrap gap-2 pl-8">
@@ -171,7 +202,7 @@ export function ApprovalAssistant({ session, queue, onAction }: Props) {
                         ? <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-300" />
                         : <XCircle className="w-3 h-3 shrink-0 text-red-300" />}
                       {success
-                        ? `Auto-approved ${approvedCount} standard requests`
+                        ? `Approved ${approvedCount} request${approvedCount === 1 ? "" : "s"}`
                         : "Failed to process approval"}
                     </div>
                   );
@@ -260,11 +291,11 @@ export function ApprovalAssistant({ session, queue, onAction }: Props) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { sendMessage("Auto approve standard requests"); setShowQuickActions(false); }}
+                  onClick={() => { sendMessage("Approve all pending requests"); setShowQuickActions(false); }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-muted hover:text-foreground hover:bg-surface-2 rounded-md transition-colors"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  Auto-approve standard
+                  Approve all pending
                 </button>
               </div>
             </div>

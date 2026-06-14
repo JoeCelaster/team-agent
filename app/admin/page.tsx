@@ -176,7 +176,10 @@ function QueueRow({
         <div className="flex flex-col items-start gap-1">
           <span className="text-xs font-medium text-foreground">{row.resource_name}</span>
           {!row.is_role_relevant && (
-            <span className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-400">
+            <span
+              title="Not mapped to this employee's role — review before approving. Still approvable."
+              className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-400"
+            >
               <AlertTriangle className="h-2.5 w-2.5" /> Out of scope
             </span>
           )}

@@ -35,12 +35,32 @@ const STARTERS: Array<{ label: string; prompt: string; Icon: React.ElementType; 
 ];
 
 export function SupportBot({ session, onAccessRequested }: Props) {
+  const storageKey = `onboard-chat:support:${session.id}`;
   const [messages, setMessages]           = useState<ChatMessage[]>([]);
+  const [hydrated, setHydrated]           = useState(false);
   const [input, setInput]                 = useState("");
   const [isLoading, setIsLoading]         = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const menuRef   = useRef<HTMLDivElement>(null);
+
+  // Hydrate persisted history on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) setMessages(JSON.parse(raw) as ChatMessage[]);
+    } catch { /* ignore corrupt storage */ }
+    setHydrated(true);
+  }, [storageKey]);
+
+  // Persist on every change (after hydration, so the initial empty state can't clobber stored history)
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      if (messages.length === 0) localStorage.removeItem(storageKey);
+      else localStorage.setItem(storageKey, JSON.stringify(messages));
+    } catch { /* ignore quota errors */ }
+  }, [messages, hydrated, storageKey]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
