@@ -13,6 +13,7 @@ import {
   GithubIcon, SlackIcon, FigmaIcon, NotionIcon, GoogleDriveIcon, LinearIcon,
 } from "@/components/BrandIcons";
 import type { Session, OrgStats, AdminRequestRow } from "@/lib/types";
+import { ApprovalAssistant } from "./components/ApprovalAssistant";
 
 type TabId = "overview" | "users" | "roles" | "access";
 
@@ -253,13 +254,13 @@ export default function AdminPage() {
   }, [router]);
 
   const fetchStats = useCallback(async (orgId: string) => {
-    const res = await fetch(`/api/admin/stats?org_id=${orgId}`);
+    const res = await fetch(`/api/admin/stats?org_id=${orgId}`, { cache: "no-store" });
     if (res.ok) setStats(await res.json());
   }, []);
 
   const fetchQueue = useCallback(async (orgId: string) => {
     setQueueLoading(true);
-    const res = await fetch(`/api/admin/queue?org_id=${orgId}`);
+    const res = await fetch(`/api/admin/queue?org_id=${orgId}`, { cache: "no-store" });
     if (res.ok) setQueue(await res.json());
     setQueueLoading(false);
   }, []);
@@ -400,7 +401,7 @@ export default function AdminPage() {
 
       {/* Main */}
       <main className="flex-1 overflow-x-hidden overflow-y-auto w-full">
-        <div className="max-w-5xl mx-auto w-full px-8 py-8">
+        <div className="max-w-7xl mx-auto w-full px-8 py-8">
 
         {/* DASHBOARD */}
         {activeTab === "overview" && (
@@ -499,149 +500,164 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Premium Invite Banner */}
-            <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-6 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6 relative overflow-visible shadow-sm">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full -mr-20 -mt-20 pointer-events-none" />
-              <div className="relative z-10 flex-1 min-w-0">
-                <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-                  <Send className="w-4 h-4 text-indigo-400" /> Invite a member
-                </h3>
-                <p className="text-sm text-subtle mt-1">Quickly send an invite link with a pre-assigned role.</p>
-              </div>
-              <form onSubmit={handleInviteSubmit} className="relative z-10 flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
-                <div className="w-full sm:w-64">
-                  <input type="email" required value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Email address" className={inputCls} />
-                </div>
-                <div className="w-full sm:w-48">
-                  <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className={`${inputCls} cursor-pointer`}>
-                    {roles.map((role) => <option key={role.id} value={role.name}>{role.name}</option>)}
-                  </select>
-                </div>
-                <button type="submit" className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-md text-sm font-medium transition-colors duration-200 ease-out active:scale-[0.99] whitespace-nowrap">
-                  Send link
-                </button>
-                <button type="button" onClick={() => setShowInviteModal(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 border border-border bg-surface hover:bg-surface-2 text-foreground px-4 py-2.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap">
-                  <UserPlus className="w-4 h-4" /> Full form
-                </button>
-              </form>
-              {inviteSuccess && (
-                <div className="absolute top-4 right-4 animate-rise-in bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-md text-xs font-medium z-20">
-                  Invitation sent!
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-8">
-              {/* Pending access requests */}
-              <div className="rounded-xl border border-border bg-surface overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground">Pending access requests</h3>
-                    <p className="text-xs text-subtle mt-0.5">Approve or deny tool access for your team</p>
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+              <div className="xl:col-span-2 space-y-8 min-w-0">
+                {/* Premium Invite Banner */}
+                <div className="relative rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-6 flex flex-col 2xl:flex-row items-start 2xl:items-center justify-between gap-5 overflow-hidden shadow-sm">
+                  <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full pointer-events-none" />
+                  <div className="relative z-10 flex-1 min-w-0">
+                    <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                      <Send className="w-4 h-4 text-indigo-400" /> Invite a member
+                    </h3>
+                    <p className="text-sm text-subtle mt-1">Quickly send an invite link with a pre-assigned role.</p>
                   </div>
-                  {queue.length > 0 && (
-                    <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-2xs font-semibold text-amber-400">
-                      <span className="font-data">{queue.length}</span> pending
-                    </span>
+                  <form onSubmit={handleInviteSubmit} className="relative z-10 flex flex-col sm:flex-row items-center gap-3 w-full 2xl:w-auto">
+                    <div className="w-full sm:w-52">
+                      <input type="email" required value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Email address" className={inputCls} />
+                    </div>
+                    <div className="w-full sm:w-36">
+                      <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className={`${inputCls} cursor-pointer`}>
+                        {roles.map((role) => <option key={role.id} value={role.name}>{role.name}</option>)}
+                      </select>
+                    </div>
+                    <button type="submit" className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-md text-sm font-medium transition-colors duration-200 ease-out active:scale-[0.99] whitespace-nowrap">
+                      Send link
+                    </button>
+                    <button type="button" onClick={() => setShowInviteModal(true)}
+                      className="w-full sm:w-auto flex items-center justify-center gap-1.5 border border-border bg-surface hover:bg-surface-2 text-foreground px-4 py-2.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap">
+                      <UserPlus className="w-4 h-4" /> Full form
+                    </button>
+                  </form>
+                  {inviteSuccess && (
+                    <div className="absolute top-4 right-4 animate-rise-in bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-md text-xs font-medium z-20">
+                      Invitation sent!
+                    </div>
                   )}
                 </div>
-                {queueLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-12 text-xs text-subtle">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading requests…
+
+                {/* Pending access requests */}
+                <div className="relative rounded-xl border border-indigo-500/15 bg-indigo-500/[0.02] overflow-hidden shadow-sm">
+                  <div className="absolute -top-16 -right-16 w-48 h-48 bg-indigo-500/8 blur-3xl rounded-full pointer-events-none" />
+                  <div className="relative z-10 border-t-2 border-t-indigo-500/20">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-border/80">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Pending access requests</h3>
+                      <p className="text-xs text-subtle mt-0.5">Approve or deny tool access for your team</p>
+                    </div>
+                    {queue.length > 0 && (
+                      <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-2xs font-semibold text-amber-400">
+                        <span className="font-data">{queue.length}</span> pending
+                      </span>
+                    )}
                   </div>
-                ) : queue.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-                    <Inbox className="h-8 w-8 text-faint stroke-[1.5]" />
-                    <p className="text-sm font-medium text-subtle">Queue is empty</p>
-                    <p className="text-xs text-faint">All access requests have been reviewed.</p>
+                  {queueLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-12 text-xs text-subtle">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading requests…
+                    </div>
+                  ) : queue.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+                      <Inbox className="h-8 w-8 text-faint stroke-[1.5]" />
+                      <p className="text-sm font-medium text-subtle">Queue is empty</p>
+                      <p className="text-xs text-faint">All access requests have been reviewed.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto custom-scrollbar">
+                      <table className="w-full text-left">
+                        <thead className="border-b border-border text-2xs uppercase tracking-wider text-faint">
+                          <tr>
+                            <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Employee</th>
+                            <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Resource</th>
+                            <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Source</th>
+                            <th className="px-4 py-3.5 font-semibold">Note</th>
+                            <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Date</th>
+                            <th className="px-4 py-3.5 font-semibold whitespace-nowrap text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {queue.map((row) => (
+                            <QueueRow key={row.request_id} row={row} session={session!} onAction={handleQueueAction} />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                   </div>
-                ) : (
+                </div>
+
+                {/* Team directory */}
+                <div className="relative rounded-xl border border-indigo-500/15 bg-indigo-500/[0.02] overflow-hidden shadow-sm">
+                  <div className="absolute -top-16 -right-16 w-48 h-48 bg-indigo-500/8 blur-3xl rounded-full pointer-events-none" />
+                  <div className="relative z-10 border-t-2 border-t-indigo-500/20 p-5 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Team directory</h3>
+                      <p className="text-xs text-subtle mt-0.5">Workspace authorization registry</p>
+                    </div>
+                    <span className="text-2xs text-muted border border-border px-2 py-0.5 rounded font-mono">{users.length} registered</span>
+                  </div>
                   <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full text-left">
-                      <thead className="border-b border-border text-2xs uppercase tracking-wider text-faint">
+                    <table className="w-full text-sm text-left text-muted">
+                      <thead className="text-2xs uppercase tracking-wide text-subtle border-b border-border">
                         <tr>
-                          <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Employee</th>
-                          <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Resource</th>
-                          <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Source</th>
-                          <th className="px-4 py-3.5 font-semibold">Note</th>
-                          <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Date</th>
-                          <th className="px-4 py-3.5 font-semibold whitespace-nowrap text-right">Actions</th>
+                          <th className="py-2.5 font-medium">User</th>
+                          <th className="py-2.5 font-medium">Role</th>
+                          <th className="py-2.5 font-medium">Status</th>
+                          <th className="py-2.5 font-medium text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {queue.map((row) => (
-                          <QueueRow key={row.request_id} row={row} session={session!} onAction={handleQueueAction} />
+                      <tbody className="divide-y divide-border">
+                        {users.map((user) => (
+                          <tr key={user.email} className="transition-colors hover:bg-surface-2/50">
+                            <td className="py-3.5">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center font-semibold text-muted text-xs">
+                                  {user.name ? user.name[0].toUpperCase() : user.email[0].toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-foreground truncate max-w-37.5">{user.name || "Awaiting setup"}</p>
+                                  <p className="text-2xs text-subtle truncate max-w-37.5">{user.email}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3.5 text-muted">{user.role}</td>
+                            <td className="py-3.5">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-2xs font-medium ${
+                                user.status === "joined"
+                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                  : "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                              }`}>{user.status === "joined" ? "Joined" : "Pending"}</span>
+                            </td>
+                            <td className="py-3.5 text-right">
+                              <div className="flex items-center justify-end gap-3">
+                                {user.status === "invited" && (
+                                  <button onClick={() => handleCopyLink(user.token)}
+                                    className="text-2xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors inline-flex items-center gap-1 cursor-pointer">
+                                    {copiedToken === user.token ? <Check className="w-3.5 h-3.5 text-emerald-400 animate-pop-in" /> : <Copy className="w-3.5 h-3.5" />}
+                                    {copiedToken === user.token ? "Copied" : "Copy"}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => { if (confirm(`Revoke permissions and delete ${user.email}?`)) deleteUser(user.email); }}
+                                  className="text-faint hover:text-red-400 p-1 rounded hover:bg-surface-2 transition-colors cursor-pointer"
+                                  title="Revoke access"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                )}
+                  </div>
+                </div>
               </div>
 
-              {/* Team directory */}
-              <div className="rounded-xl border border-border bg-surface p-5 space-y-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground">Team directory</h3>
-                    <p className="text-xs text-subtle mt-0.5">Workspace authorization registry</p>
-                  </div>
-                  <span className="text-2xs text-muted border border-border px-2 py-0.5 rounded font-mono">{users.length} registered</span>
-                </div>
-                <div className="overflow-x-auto custom-scrollbar">
-                  <table className="w-full text-sm text-left text-muted">
-                    <thead className="text-2xs uppercase tracking-wide text-subtle border-b border-border">
-                      <tr>
-                        <th className="py-2.5 font-medium">User</th>
-                        <th className="py-2.5 font-medium">Role</th>
-                        <th className="py-2.5 font-medium">Status</th>
-                        <th className="py-2.5 font-medium text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {users.map((user) => (
-                        <tr key={user.email} className="transition-colors hover:bg-surface-2/50">
-                          <td className="py-3.5">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center font-semibold text-muted text-xs">
-                                {user.name ? user.name[0].toUpperCase() : user.email[0].toUpperCase()}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium text-foreground truncate max-w-37.5">{user.name || "Awaiting setup"}</p>
-                                <p className="text-2xs text-subtle truncate max-w-37.5">{user.email}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3.5 text-muted">{user.role}</td>
-                          <td className="py-3.5">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-2xs font-medium ${
-                              user.status === "joined"
-                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                : "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
-                            }`}>{user.status === "joined" ? "Joined" : "Pending"}</span>
-                          </td>
-                          <td className="py-3.5 text-right">
-                            <div className="flex items-center justify-end gap-3">
-                              {user.status === "invited" && (
-                                <button onClick={() => handleCopyLink(user.token)}
-                                  className="text-2xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors inline-flex items-center gap-1 cursor-pointer">
-                                  {copiedToken === user.token ? <Check className="w-3.5 h-3.5 text-emerald-400 animate-pop-in" /> : <Copy className="w-3.5 h-3.5" />}
-                                  {copiedToken === user.token ? "Copied" : "Copy"}
-                                </button>
-                              )}
-                              <button
-                                onClick={() => { if (confirm(`Revoke permissions and delete ${user.email}?`)) deleteUser(user.email); }}
-                                className="text-faint hover:text-red-400 p-1 rounded hover:bg-surface-2 transition-colors cursor-pointer"
-                                title="Revoke access"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {/* Right Column: AI Assistant (Sticky) */}
+              <div className="xl:col-span-1">
+                <div className="sticky top-8">
+                  <ApprovalAssistant session={session!} queue={queue} onAction={handleQueueAction} />
                 </div>
               </div>
             </div>
