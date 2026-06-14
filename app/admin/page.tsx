@@ -6,7 +6,7 @@ import {
   Users, Shield, Sliders, LayoutDashboard, Building2,
   Plus, Trash2, Copy, Check, Send, Laptop, Info,
   ArrowLeft, UserPlus, X, AlertCircle, Loader2,
-  CheckCircle2, XCircle, Inbox, LogOut, Bot, User, AlertTriangle,
+  CheckCircle2, XCircle, Inbox, LogOut, Bot, User, AlertTriangle, Activity, Clock,
 } from "lucide-react";
 import { useApp } from "@/app/context/AppContext";
 import {
@@ -374,6 +374,12 @@ export default function AdminPage() {
         </nav>
 
         <div className="p-3 border-t border-border space-y-2">
+          <a
+            href="/admin/employees"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted hover:text-foreground hover:bg-surface-2/60 transition-colors"
+          >
+            <Activity className="w-4 h-4" /> Employee status
+          </a>
           <button
             onClick={() => setShowInviteModal(true)}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted hover:text-foreground hover:bg-surface-2/60 transition-colors cursor-pointer"
@@ -413,10 +419,9 @@ export default function AdminPage() {
 
             <div className="flex flex-wrap items-center gap-x-10 gap-y-4 border-y border-border/70 py-5">
               {[
-                { label: "Total employees", value: stats?.total_employees ?? "—", sub: "in your organisation",   dot: "bg-faint"        },
+                { label: "Total employees", value: stats?.total_employees ?? "—", sub: "in your organisation", dot: "bg-faint" },
                 { label: "Active",          value: stats?.active_count      ?? "—", sub: "logged in at least once", dot: "bg-emerald-400" },
-                { label: "Pending login",   value: stats?.pending_login_count ?? "—", sub: "invite not yet accepted", dot: "bg-amber-400"  },
-                { label: "Open requests",   value: stats?.open_requests      ?? "—", sub: "awaiting review",      dot: "bg-red-400"      },
+                { label: "Pending login",   value: stats?.pending_login_count ?? "—", sub: "invite not yet accepted", dot: "bg-amber-400" },
               ].map((s) => (
                 <div key={s.label}>
                   <div className="flex items-center gap-1.5 mb-0.5">
@@ -427,6 +432,61 @@ export default function AdminPage() {
                   <p className="text-2xs text-faint">{s.sub}</p>
                 </div>
               ))}
+              <button onClick={() => setActiveTab("users")} className="group text-left">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                  <p className="text-xs text-muted group-hover:text-foreground transition-colors">Open requests</p>
+                </div>
+                <p className="font-data text-3xl font-semibold text-foreground tabular-nums group-hover:underline underline-offset-2">{stats?.open_requests ?? "—"}</p>
+                <p className="text-2xs text-faint">awaiting review</p>
+              </button>
+            </div>
+
+            {/* Employee Status Cards */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-widest text-subtle">Employee Status</h3>
+                <a href="/admin/employees" className="text-2xs text-subtle hover:text-muted transition-colors">View all →</a>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <a
+                  href="/admin/employees?tab=active"
+                  className="group relative rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 flex items-center justify-between overflow-hidden transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/10"
+                >
+                  <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-emerald-500/10 blur-2xl rounded-full pointer-events-none" />
+                  <div className="relative z-10 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Active</p>
+                    </div>
+                    <p className="font-data text-3xl font-bold text-foreground tabular-nums">{stats?.active_count ?? "—"}</p>
+                    <p className="text-2xs text-subtle">employees logged in</p>
+                  </div>
+                  <div className="relative z-10 flex flex-col items-end gap-2">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-400/60" />
+                    <span className="text-2xs font-medium text-emerald-400 group-hover:translate-x-0.5 transition-transform">View access →</span>
+                  </div>
+                </a>
+
+                <a
+                  href="/admin/employees?tab=pending"
+                  className="group relative rounded-xl border border-amber-500/20 bg-amber-500/5 p-5 flex items-center justify-between overflow-hidden transition-colors hover:border-amber-500/40 hover:bg-amber-500/10"
+                >
+                  <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-amber-500/10 blur-2xl rounded-full pointer-events-none" />
+                  <div className="relative z-10 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Pending Login</p>
+                    </div>
+                    <p className="font-data text-3xl font-bold text-foreground tabular-nums">{stats?.pending_login_count ?? "—"}</p>
+                    <p className="text-2xs text-subtle">haven't signed in yet</p>
+                  </div>
+                  <div className="relative z-10 flex flex-col items-end gap-2">
+                    <Clock className="w-6 h-6 text-amber-400/60" />
+                    <span className="text-2xs font-medium text-amber-400 group-hover:translate-x-0.5 transition-transform">View details →</span>
+                  </div>
+                </a>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
